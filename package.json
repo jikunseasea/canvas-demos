@@ -1,0 +1,13 @@
+{
+  "name": "canvas-demos",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "browser-sync": "^2.23.5"
+  },
+  "scripts": {
+    "start": "browser-sync start --files 'src/**/*' --server src"
+  }
+}
