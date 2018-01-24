@@ -1,39 +1,28 @@
-const { Observable } = Rx;
+const { Observable, BehaviorSubject, Subject } = Rx;
 var canvas = document.getElementById('canvas');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
 var ctx = canvas.getContext('2d');
 
-
-const mouse = { x: undefined, y: undefined };
-
-const maxRadius = 40;
-const minRadius = 2;
+const maxRadius = 70;
+const minRadius = 3;
 
 const ballCnt = 500;
 
-window.addEventListener('mousemove', e => {
-  Object.assign(mouse, { x: e.x, y: e.y });
-});
 
-window.addEventListener('mouseout', e => {
-  mouse.x = undefined;
-  mouse.y = undefined;
-});
-// const mouseMove$ = Obervable.fromEvent(window, 'mousemove')
-//   .map(e => ({ x: e.x, y: e.y }))
-//   .takUntil(Observable.fromEvent(window, 'mouseleave'))
-//   .publishBehavior({ x: null, y: null })
-//   .refCount();
+const mouse$ = Observable.fromEvent(window, 'mousemove')
+  .map(e => ({ x: e.x, y: e.y }))
+  .takeUntil(Observable.fromEvent(window, 'mouseleave'))
+  .publishBehavior({ x: null, y: null })
+  .refCount();
 
-window.addEventListener('resize', e => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-});
-// const resize$ = Observable.fromEvent(window, 'resize')
-//   .map(() => ({ width: window.innerWidth, height: window.innerHeight }));
-
-// const canvasSize$ = resize$;
+const canvasSize$ = Observable.fromEvent(window, 'resize')
+  .map(() => ({ width: window.innerWidth, height: window.innerHeight }))
+  .publishBehavior({ width: window.innerWidth, height: window.innerHeight })
+  .refCount();
+  
+canvasSize$
+  .subscribe(({ width, height }) => {
+    Object.assign(canvas, { width, height });
+  });
 
 const colors = [
   '#df2029',
@@ -45,71 +34,117 @@ const colors = [
 ];
 const randomColor = colors => colors[Math.floor(Math.random() * colors.length)];
 
+const updateScale = (old, bounce, max, min) => {
+  if (old + bounce > max
+    || old + bounce < min) {
+    return old - bounce;
+  }
+  return old + bounce;
+};
+
 function Ball(x, y, vx, vy, radius) {
-  this.x = x;
-  this.y = y;
-  this.vx = vx;
-  this.vy = vy;
-  this.radius = radius;
 
   const color = randomColor(colors);
 
-  // const update$ = new BehaviorSubject(); // TODO
+  const update$ = new Subject();
 
-  // this.draw = () => {
-  //   ctx.beginPath();
-  //   ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, true);
-  //   ctx.closePath();
-  //   ctx.fillStyle = color;
-  //   ctx.fill();
-  // };
+  const mouseX$ = new BehaviorSubject();
+  const mouseY$ = new BehaviorSubject();
 
-  this.update = () => {
-    if (this.y + this.vy > canvas.height
-      || this.y + this.vy < 0) {
-      this.vy = -this.vy;
-    }
-    if (this.x + this.vx > canvas.width
-      || this.x + this.vx < 0) {
-      this.vx = -this.vx;
-    }
-    this.x += this.vx;
-    this.y += this.vy;
+  const canvasWidth$ = new BehaviorSubject();
+  const canvasHeight$ = new BehaviorSubject();
 
+  const vx$ = new BehaviorSubject(vx);
+  const vy$ = new BehaviorSubject(vy);
 
-    if (mouse.x - this.x < 50
-      && mouse.x - this.x > -50
-      && mouse.y - this.y < 50
-      && mouse.y - this.y > -50) {
-      if (this.radius < maxRadius) {
-        this.radius += 1;
+  const x$ = update$
+    .withLatestFrom(vx$, (_, vx) => vx)
+    .scan((x, vx) => x + vx, x)
+    .publishBehavior(x)
+    .refCount();
+
+  x$
+    .withLatestFrom(vx$, canvasWidth$)
+    .subscribe(([x, vx, canvasWidth]) => {
+      if (x + vx > canvasWidth
+        || x + vx < 0) {
+        vx$.next(-vx)
       }
-    } else if (this.radius > minRadius) {
-      this.radius -= 0.1;
-    }
+    });
 
-    this.draw();
-  };
-}
+  const y$ = update$
+    .withLatestFrom(vy$, (_, vy) => vy)
+    .scan((y, vy) => y + vy, y)
+    .publishBehavior(y)
+    .refCount();
 
-const balls = [];
+  y$
+    .withLatestFrom(vy$, canvasHeight$)
+    .subscribe(([y, vy, canvasHeight]) => {
+      if (y + vy > canvasHeight
+        || y + vy < 0) {
+        vy$.next(-vy)
+      }
+    });
+
+  const radius$ = Observable
+    .combineLatest(mouseX$, mouseY$, x$, y$)
+    .scan((r, [mouseX, mouseY, x, y]) => {
+      if (mouseX - x < 50
+        && mouseX - x > -50
+        && mouseY - y < 50
+        && mouseY - y > -50) {
+        if (r < maxRadius) {
+          return r + 1;
+        }
+      } else if (r > minRadius) {
+        return r - 1;
+      }
+      return r;
+    }, radius);
+
+  Observable
+    .combineLatest(x$, y$, radius$)
+    .subscribe(([x, y, radius]) => {
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2, true);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+    });
 
 
-for (let i = 0; i < ballCnt; ++i) {
-  const x = Math.random() * canvas.width;
-  const y = Math.random() * canvas.height;
-  const vx = (Math.random() - 0.5) * 1;
-  const vy = (Math.random() - 0.5) * 1;
-  radius = minRadius;
-  balls.push(new Ball(x, y, vx, vy, radius));
-}
-
-function animate() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  for (let ball of balls) {
-    ball.update();
+  this.update = (mouseX, mouseY, canvasWidth, canvasHeight) => {
+    mouseX$.next(mouseX);
+    mouseY$.next(mouseY);
+    canvasWidth$.next(canvasWidth);
+    canvasHeight$.next(canvasHeight);
+    update$.next();
   }
-  window.requestAnimationFrame(animate);
 }
 
-animate();
+const balls = Array.from({ length: ballCnt })
+  .map(() => {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const vx = (Math.random() - 0.5) * 4;
+    const vy = (Math.random() - 0.5) * 4;
+    const radius = minRadius;
+    const ball = new Ball(x, y, vx, vy, radius);
+    return ball;
+  });
+
+Observable
+  .interval(0, Rx.Scheduler.animationFrame)
+  .withLatestFrom(mouse$, canvasSize$, (_, mouse, canvasSize) => ({
+    mouseX: mouse.x,
+    mouseY: mouse.y,
+    canvasWidth: canvasSize.width,
+    canvasHeight: canvasSize.height
+  }))
+  .subscribe(({ mouseX, mouseY, canvasWidth, canvasHeight }) => {
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    balls.forEach(b => {
+      b.update(mouseX, mouseY, canvasWidth, canvasHeight);
+    })
+  });
