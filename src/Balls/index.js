@@ -34,14 +34,6 @@ const colors = [
 ];
 const randomColor = colors => colors[Math.floor(Math.random() * colors.length)];
 
-const updateScale = (old, bounce, max, min) => {
-  if (old + bounce > max
-    || old + bounce < min) {
-    return old - bounce;
-  }
-  return old + bounce;
-};
-
 function Ball(x, y, vx, vy, radius) {
 
   const color = randomColor(colors);
@@ -123,8 +115,9 @@ function Ball(x, y, vx, vy, radius) {
   }
 }
 
-const balls = Array.from({ length: ballCnt })
-  .map(() => {
+const balls$ = Observable.range(0, ballCnt - 1)
+  .withLatestFrom(canvasSize$, (_, { width, height }) => ({ width, height }))
+  .map(({ width, height }) => {
     const x = Math.random() * canvas.width;
     const y = Math.random() * canvas.height;
     const vx = (Math.random() - 0.5) * 4;
@@ -132,17 +125,20 @@ const balls = Array.from({ length: ballCnt })
     const radius = minRadius;
     const ball = new Ball(x, y, vx, vy, radius);
     return ball;
-  });
+  })
+  .scan((balls, ball) => [...balls, ball], []);
+
 
 Observable
   .interval(0, Rx.Scheduler.animationFrame)
-  .withLatestFrom(mouse$, canvasSize$, (_, mouse, canvasSize) => ({
+  .withLatestFrom(mouse$, canvasSize$, balls$,  (_, mouse, canvasSize, balls) => ({
     mouseX: mouse.x,
     mouseY: mouse.y,
     canvasWidth: canvasSize.width,
-    canvasHeight: canvasSize.height
+    canvasHeight: canvasSize.height,
+    balls
   }))
-  .subscribe(({ mouseX, mouseY, canvasWidth, canvasHeight }) => {
+  .subscribe(({ mouseX, mouseY, canvasWidth, canvasHeight, balls }) => {
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     balls.forEach(b => {
       b.update(mouseX, mouseY, canvasWidth, canvasHeight);
