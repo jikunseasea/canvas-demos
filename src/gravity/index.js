@@ -24,7 +24,9 @@ const colors = [
 
 const randomColor = colors => colors[Math.floor(Math.random() * colors.length)];
 
-const randomIntFromRange = (min, max) => Math.floor(Math.random() * (max - min + 1) + min);
+const randomFromRange = (min, max) => Math.random() * (max - min) + min;
+
+const randomIntFromRange = (min, max) => Math.floor(randomFromRange(min, max));
 
 const GRAVITY = 0.2;
 const FRICTION = 0.99;
@@ -98,8 +100,8 @@ const balls$ = canvasSize$
       .map(() => {
         const x = randomIntFromRange(0, width);
         const y = randomIntFromRange(height * 1 / 4, height * 3 / 4);
-        const dy = randomIntFromRange(-2, 2);
-        const dx = randomIntFromRange(-2, 2);
+        const dy = randomFromRange(-2, 2);
+        const dx = randomFromRange(-2, 2);
         const radius = randomIntFromRange(10, 20);
         const color = randomColor(colors);
         return new Ball(x, y, dx, dy, radius, color);

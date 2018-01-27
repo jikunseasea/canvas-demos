@@ -10,12 +10,12 @@ const elasticCollision = (m1, m2) => (d1, d2) => (
   d1 * (m1 - m2) / (m1 + m2) + d2 * 2 * m2 / (m1 + m2)
 );
 
-function resolveCollision(particle, otherParticle) {
-  const xVelocityDiff = particle.dx - otherParticle.dx;
-  const yVelocityDiff = particle.dy - otherParticle.dy;
+function resolveCollision(ball, otherBall) {
+  const xVelocityDiff = ball.dx - otherBall.dx;
+  const yVelocityDiff = ball.dy - otherBall.dy;
 
-  const xDist = otherParticle.x - particle.x;
-  const yDist = otherParticle.y - particle.y;
+  const xDist = otherBall.x - ball.x;
+  const yDist = otherBall.y - ball.y;
 
   let vFinal1 = null;
   let vFinal2 = null;
@@ -26,12 +26,12 @@ function resolveCollision(particle, otherParticle) {
       const angle = -Math.atan2(yDist, xDist);
 
       // 两个粒子的质量
-      const m1 = particle.mass;
-      const m2 = otherParticle.mass;
+      const m1 = ball.mass;
+      const m2 = otherBall.mass;
 
       // Velocity before equation
-      const u1 = rotate(particle.dx, particle.dy, angle);
-      const u2 = rotate(otherParticle.dx, otherParticle.dy, angle);
+      const u1 = rotate(ball.dx, ball.dy, angle);
+      const u2 = rotate(otherBall.dx, otherBall.dy, angle);
 
       // Velocity after 1d collision equation
       const elasticCollisionAsMass = elasticCollision(m1, m2);
