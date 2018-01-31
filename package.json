@@ -5,9 +5,12 @@
   "license": "MIT",
   "dependencies": {},
   "devDependencies": {
-    "browser-sync": "^2.23.5"
+    "browser-sync": "^2.23.5",
+    "gh-pages": "^1.1.0"
   },
   "scripts": {
-    "start": "browser-sync start --files 'src/**/*' --server src"
-  }
+    "start": "browser-sync start --files 'src/**/*' --server src",
+    "deploy": "gh-pages -d src"
+  },
+  "homepage": "http://jkest.github.io/canvas-demos/"
 }
